@@ -17,7 +17,8 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
-    ReqHandler reqHandler(DICT_PATH, HMM_PATH, IDF_PATH, STOPWORD_PATH);
+    WordAssembler wordAssembler(DICT_PATH, HMM_PATH, IDF_PATH, STOPWORD_PATH);
+    ReqHandler reqHandler(wordAssembler);
     EpollServer server(stoi(argv[2]), &reqHandler);
     server.start();
     return EXIT_SUCCESS;
