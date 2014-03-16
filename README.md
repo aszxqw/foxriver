@@ -22,7 +22,7 @@ working directory is `foxriver/build`
 ### testing
 
 ```
-curl "http://127.0.0.1:14311/?sentence=你好世界"
+curl "http://127.0.0.1:14311/?sentence=我明天要去上海"
 ```
 
 
