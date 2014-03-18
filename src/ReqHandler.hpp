@@ -17,8 +17,9 @@ namespace FoxRiver
         public:
             bool do_GET(const HttpReqInfo& httpReq, string& res) const
             {
-                string sentence;
-                httpReq.GET("sentence", sentence);
+                string sentence, tmp;
+                httpReq.GET("sentence", tmp);
+                URLDecode(tmp, sentence);
                 return _wordAssembler.run(sentence, res);
             }
     };
