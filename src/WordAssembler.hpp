@@ -26,10 +26,11 @@ namespace FoxRiver
 
     struct CityInfo
     {
-        string cityCode;
-        size_t cityId;
-        string cityName;
+        string code;
+        size_t id;
+        string name;
     };
+    typedef unordered_map<string, const CityInfo*> CityInfoIndexType;
 
     typedef unordered_map<string, int> TimeMapType;
 
@@ -38,12 +39,15 @@ namespace FoxRiver
         private:
             KeywordExtractor _keywordExtractor;
             TimeMapType _timeMap;
-            set<string> _locationSet;
+            //set<string> _locationSet;
+            vector<CityInfo> _cityInfos;
+            CityInfoIndexType _cityNameIndex;
         public:
-            WordAssembler(const string& dictPath, const string& hmmPath, const string& idfPath, const string& stopwordPath , const string& timeDictPath, const string& locationDictPath): _keywordExtractor(dictPath, hmmPath, idfPath, stopwordPath)
+            WordAssembler(const string& dictPath, const string& hmmPath, const string& idfPath, const string& stopwordPath , const string& timeDictPath, const string& cityDictPath): _keywordExtractor(dictPath, hmmPath, idfPath, stopwordPath)
             {
-                _loadSet(locationDictPath, _locationSet);
+                //_loadSet(locationDictPath, _locationSet);
                 _loadTimeMap(timeDictPath, _timeMap);
+                _loadCityDict(cityDictPath, _cityInfos, _cityNameIndex);
             }
             ~WordAssembler()
             {}
@@ -58,7 +62,7 @@ namespace FoxRiver
                     return false;
                 }
 
-                _findLocation(words, keyInfo.location);
+                //_findLocation(words, keyInfo.location);
                 _findTime(words,keyInfo.time);
 
                 res << keyInfo;
@@ -105,55 +109,70 @@ namespace FoxRiver
                 assert(mp.size());
             }
         public:
-            void _loadCityDict(const string& filePath)
+            void _loadCityDict(const string& filePath, vector<CityInfo>& cityInfos, CityInfoIndexType& cityNameIndex) const
             {
                 tinyxml2::XMLDocument doc;
                 tinyxml2::XMLError xmlError = doc.LoadFile(filePath.c_str());
                 assert(xmlError == tinyxml2::XML_SUCCESS);
-                tinyxml2::XMLElement * element;
-                tinyxml2::XMLElement * elementTmp;
-                doc.FirstChildElement("CityDetails");
+                tinyxml2::XMLElement * element = NULL;
+                tinyxml2::XMLElement * elementTmp = NULL;
+                const char* str = NULL;
+                element = doc.FirstChildElement("CityDetails");
                 assert(element);
                 element = element->FirstChildElement("CityDetail");
                 assert(element);
-                vector<CityInfo> cityInfos;
                 CityInfo cityInfo;
+                cityInfos.clear();
+                cityNameIndex.clear();
                 while(element)
                 {
                     elementTmp = element->FirstChildElement("CityCode");
                     assert(elementTmp);
-                    cityInfo.cityCode = elementTmp->GetText();
+                    str = elementTmp->GetText();
+                    if(str)
+                    {
+                        cityInfo.code = str;
+                    }
+                    else
+                    {
+                        cityInfo.code.clear();
+                    }
                     
                     elementTmp = element->FirstChildElement("City");
                     assert(elementTmp);
-                    cityInfo.cityId = atoi(elementTmp->GetText());
+                    str = elementTmp->GetText();
+                    assert(str);
+                    cityInfo.id = atoi(str);
                     
                     elementTmp = element->FirstChildElement("CityName");
                     assert(elementTmp);
-                    cityInfo.cityId = element->FirstChildElement("City")->GetText();
+                    str = elementTmp->GetText();
+                    assert(str);
+                    cityInfo.name = str;
 
                     cityInfos.push_back(cityInfo);
+                    cityNameIndex[cityInfo.name] = &cityInfos.back();
                     element = element->NextSiblingElement("CityDetail");
                 }
-                cout<<cityInfos.size() << endl;
+                cout<<_cityInfos.size() << endl;
             }
         private:
-            void _loadSet(const string& filePath, set<string>& st) const
-            {
-                ifstream ifs(filePath.c_str());
-                if(!ifs)
-                {
-                    LogFatal("open [%s] failed.", filePath.c_str());
-                    assert(false);
-                }
-                st.clear();
-                string line;
-                while(getline(ifs, line))
-                {
-                    st.insert(line);
-                }
-                assert(st.size());
-            }
+            //void _loadSet(const string& filePath, set<string>& st) const
+            //{
+            //    ifstream ifs(filePath.c_str());
+            //    if(!ifs)
+            //    {
+            //        LogFatal("open [%s] failed.", filePath.c_str());
+            //        assert(false);
+            //    }
+            //    st.clear();
+            //    string line;
+            //    while(getline(ifs, line))
+            //    {
+            //        st.insert(line);
+            //    }
+            //    assert(st.size());
+            //}
             bool _findTime(const vector<string>& words, string & timeStr) const
             {
                 for(size_t i = 0; i < words.size(); i ++)
@@ -165,18 +184,18 @@ namespace FoxRiver
                 }
                 return false;
             }
-            bool _findLocation(const vector<string>& words, string & location) const
-            {
-                for(size_t i = 0; i < words.size(); i ++)
-                {
-                    if(isIn(_locationSet, words[i]))
-                    {
-                        location = words[i];
-                        return true;
-                    }
-                }
-                return false;
-            }
+            //bool _findLocation(const vector<string>& words, string & location) const
+            //{
+            //    for(size_t i = 0; i < words.size(); i ++)
+            //    {
+            //        if(isIn(_locationSet, words[i]))
+            //        {
+            //            location = words[i];
+            //            return true;
+            //        }
+            //    }
+            //    return false;
+            //}
             
     };
 }
