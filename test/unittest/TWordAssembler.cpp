@@ -25,3 +25,9 @@ TEST(TWordAssembler, test1)
     s2 << res;
     ASSERT_EQ(s1, s2);
 }
+
+TEST(TWordAssembler, test2)
+{
+    WordAssembler wordAssembler(DICT_PATH, HMM_PATH, IDF_PATH, STOPWORD_PATH, TIME_DICT_PATH, LOCATION_PATH);
+    wordAssembler._loadCityDict("../dict/city.xml");
+}

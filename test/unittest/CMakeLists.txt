@@ -8,5 +8,5 @@ INCLUDE_DIRECTORIES(${GTEST_ROOT_DIR} ${GTEST_ROOT_DIR}/include ${PROJECT_SOURCE
 ADD_LIBRARY(gtest STATIC ${GTEST_ROOT_DIR}/src/gtest-all.cc)
 ADD_EXECUTABLE(test.run gtest_main.cpp TWordAssembler.cpp) 
 TARGET_LINK_LIBRARIES(gtest pthread)
-TARGET_LINK_LIBRARIES(test.run gtest pthread)
+TARGET_LINK_LIBRARIES(test.run gtest pthread tinyxml2)
 

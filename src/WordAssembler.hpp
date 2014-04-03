@@ -3,6 +3,7 @@
 
 #include "CppJieba/MPSegment.hpp"
 #include "CppJieba/KeywordExtractor.hpp"
+#include "deps/tinyxml2/tinyxml2.h"
 
 namespace FoxRiver
 {
@@ -22,6 +23,13 @@ namespace FoxRiver
     {
         return os << string_format("{\"time\": \"%s\", \"location\": \"%s\"}", keyInfo.time.c_str(), keyInfo.location.c_str());
     }
+
+    struct CityInfo
+    {
+        string cityCode;
+        size_t cityId;
+        string cityName;
+    };
 
     typedef unordered_map<string, int> TimeMapType;
 
@@ -96,6 +104,40 @@ namespace FoxRiver
                 }
                 assert(mp.size());
             }
+        public:
+            void _loadCityDict(const string& filePath)
+            {
+                tinyxml2::XMLDocument doc;
+                tinyxml2::XMLError xmlError = doc.LoadFile(filePath.c_str());
+                assert(xmlError == tinyxml2::XML_SUCCESS);
+                tinyxml2::XMLElement * element;
+                tinyxml2::XMLElement * elementTmp;
+                doc.FirstChildElement("CityDetails");
+                assert(element);
+                element = element->FirstChildElement("CityDetail");
+                assert(element);
+                vector<CityInfo> cityInfos;
+                CityInfo cityInfo;
+                while(element)
+                {
+                    elementTmp = element->FirstChildElement("CityCode");
+                    assert(elementTmp);
+                    cityInfo.cityCode = elementTmp->GetText();
+                    
+                    elementTmp = element->FirstChildElement("City");
+                    assert(elementTmp);
+                    cityInfo.cityId = atoi(elementTmp->GetText());
+                    
+                    elementTmp = element->FirstChildElement("CityName");
+                    assert(elementTmp);
+                    cityInfo.cityId = element->FirstChildElement("City")->GetText();
+
+                    cityInfos.push_back(cityInfo);
+                    element = element->NextSiblingElement("CityDetail");
+                }
+                cout<<cityInfos.size() << endl;
+            }
+        private:
             void _loadSet(const string& filePath, set<string>& st) const
             {
                 ifstream ifs(filePath.c_str());
