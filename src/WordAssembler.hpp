@@ -13,24 +13,24 @@ namespace FoxRiver
     using namespace CppJieba;
 
 
+    struct CityInfo
+    {
+        string code;
+        string id;
+        string name;
+    };
+    typedef unordered_map<string, const CityInfo*> CityInfoIndexType;
     struct KeyInfo
     {
         string time;
-        string location;
+        CityInfo cityInfo;
     };
 
     ostream& operator << (ostream& os, const KeyInfo& keyInfo)
     {
-        return os << string_format("{\"time\": \"%s\", \"location\": \"%s\"}", keyInfo.time.c_str(), keyInfo.location.c_str());
+        return os << string_format("{\"time\": \"%s\", \"cityName\": \"%s\", \"cityId\": \"%s\", \"cityCode\": \"%s\"}", keyInfo.time.c_str(), keyInfo.cityInfo.name.c_str(), keyInfo.cityInfo.id.c_str(), keyInfo.cityInfo.code.c_str());
     }
 
-    struct CityInfo
-    {
-        string code;
-        size_t id;
-        string name;
-    };
-    typedef unordered_map<string, const CityInfo*> CityInfoIndexType;
 
     typedef unordered_map<string, int> TimeMapType;
 
@@ -42,6 +42,15 @@ namespace FoxRiver
             //set<string> _locationSet;
             vector<CityInfo> _cityInfos;
             CityInfoIndexType _cityNameIndex;
+        public:
+            const vector<CityInfo>& getCityInfos() const
+            {
+                return _cityInfos;
+            }
+            const CityInfoIndexType& getCityNameIndex() const 
+            {
+                return _cityNameIndex;
+            }
         public:
             WordAssembler(const string& dictPath, const string& hmmPath, const string& idfPath, const string& stopwordPath , const string& timeDictPath, const string& cityDictPath): _keywordExtractor(dictPath, hmmPath, idfPath, stopwordPath)
             {
@@ -62,8 +71,10 @@ namespace FoxRiver
                     return false;
                 }
 
-                //_findLocation(words, keyInfo.location);
+                print(__LINE__);
+                _findCityInfo(words, keyInfo.cityInfo);
                 _findTime(words,keyInfo.time);
+                print(__LINE__);
 
                 res << keyInfo;
                 return true;
@@ -142,19 +153,20 @@ namespace FoxRiver
                     assert(elementTmp);
                     str = elementTmp->GetText();
                     assert(str);
-                    cityInfo.id = atoi(str);
+                    cityInfo.id = str;
                     
                     elementTmp = element->FirstChildElement("CityName");
                     assert(elementTmp);
                     str = elementTmp->GetText();
                     assert(str);
+                    print(str);
                     cityInfo.name = str;
 
                     cityInfos.push_back(cityInfo);
                     cityNameIndex[cityInfo.name] = &cityInfos.back();
                     element = element->NextSiblingElement("CityDetail");
                 }
-                cout<<_cityInfos.size() << endl;
+                LogDebug("load [%u] cityInfos ", _cityInfos.size());
             }
         private:
             //void _loadSet(const string& filePath, set<string>& st) const
@@ -179,6 +191,36 @@ namespace FoxRiver
                 {
                     if(convertTime(words[i], timeStr))
                     {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            bool _findCityInfo(const vector<string>& words, CityInfo & cityInfo) const
+            {
+                CityInfoIndexType::const_iterator citer;
+                for(size_t i = 0; i < words.size(); i++)
+                {
+                    citer = _cityNameIndex.find(words[i]);
+                    print(__LINE__);
+                    print(words[i]);
+                    if(_cityNameIndex.end() != citer)
+                    {
+                    print(__LINE__);
+                    print(words[i]);
+                    assert(citer->second);
+                    getchar();
+                    print(citer->second->name);
+                    getchar();
+                    print(citer->second->id);
+                    getchar();
+                    print(citer->second->code);
+                    getchar();
+
+                        cityInfo.name = citer->second->name;
+                        cityInfo.id = citer->second->id;
+                        cityInfo.code = citer->second->code;
+                    print(__LINE__);
                         return true;
                     }
                 }

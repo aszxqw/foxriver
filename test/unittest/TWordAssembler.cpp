@@ -12,19 +12,21 @@ const char * const SENTENCE = "明天我要去上海";
 
 using namespace FoxRiver;
 
-//TEST(TWordAssembler, test1)
-//{
-//    WordAssembler wordAssembler(DICT_PATH, HMM_PATH, IDF_PATH, STOPWORD_PATH, TIME_DICT_PATH, LOCATION_PATH);
-//    string res;
-//    wordAssembler.run(SENTENCE, res);
-//    KeyInfo keyInfo;
-//    wordAssembler.convertTime("明天", keyInfo.time);
-//    keyInfo.location = "上海";
-//    string s1, s2;
-//    s1 << keyInfo;
-//    s2 << res;
-//    ASSERT_EQ(s1, s2);
-//}
+TEST(TWordAssembler, test1)
+{
+    WordAssembler wordAssembler(DICT_PATH, HMM_PATH, IDF_PATH, STOPWORD_PATH, TIME_DICT_PATH, LOCATION_PATH);
+    string res;
+    wordAssembler.run(SENTENCE, res);
+    KeyInfo keyInfo;
+    wordAssembler.convertTime("明天", keyInfo.time);
+    keyInfo.cityInfo.name = "上海";
+    print(res);
+    exit(0);
+    string s1, s2;
+    s1 << keyInfo;
+    s2 << res;
+    ASSERT_EQ(s1, s2);
+}
 
 TEST(TWordAssembler, test2)
 {
