@@ -7,7 +7,7 @@
 
 namespace FoxRiver
 {
-    const size_t KEYWORD_TOP_N = 5;
+    const size_t KEYWORD_TOP_N = 20;
     const size_t TIME_DICT_COLUMN_NUM = 2;
     
     using namespace CppJieba;
@@ -19,6 +19,12 @@ namespace FoxRiver
         string id;
         string name;
     };
+    struct LocationInfo
+    {
+        string id;
+        string name;
+        string cityId;
+    };
 
     inline ostream& operator << (ostream& os, const CityInfo& cityInfo)
     {
@@ -26,15 +32,18 @@ namespace FoxRiver
     }
     
     typedef unordered_map<string, const CityInfo*> CityInfoIndexType;
+    typedef unordered_map<string, const LocationInfo*> LocationInfoIndexType;
+
     struct KeyInfo
     {
         string time;
         CityInfo cityInfo;
+        LocationInfo locationInfo;
     };
 
     inline ostream& operator << (ostream& os, const KeyInfo& keyInfo)
     {
-        return os << string_format("{\"time\": \"%s\", \"cityName\": \"%s\", \"cityId\": \"%s\", \"cityCode\": \"%s\"}", keyInfo.time.c_str(), keyInfo.cityInfo.name.c_str(), keyInfo.cityInfo.id.c_str(), keyInfo.cityInfo.code.c_str());
+        return os << string_format("{\"time\": \"%s\", \"cityName\": \"%s\", \"cityId\": \"%s\", \"cityCode\": \"%s\", \"locationId\": \"%s\", \"locationName\":\"%s\", \"locationCityId\":\"%s\"}", keyInfo.time.c_str(), keyInfo.cityInfo.name.c_str(), keyInfo.cityInfo.id.c_str(), keyInfo.cityInfo.code.c_str(), keyInfo.locationInfo.id.c_str(), keyInfo.locationInfo.name.c_str(), keyInfo.locationInfo.cityId.c_str());
     }
 
 
@@ -45,9 +54,11 @@ namespace FoxRiver
         private:
             KeywordExtractor _keywordExtractor;
             TimeMapType _timeMap;
-            //set<string> _locationSet;
             vector<CityInfo> _cityInfos;
             CityInfoIndexType _cityNameIndex;
+            vector<LocationInfo> _locationInfos;
+            LocationInfoIndexType _locationNameIndex;
+            
         public:
             const vector<CityInfo>& getCityInfos() const
             {
@@ -58,11 +69,12 @@ namespace FoxRiver
                 return _cityNameIndex;
             }
         public:
-            WordAssembler(const string& dictPath, const string& hmmPath, const string& idfPath, const string& stopwordPath , const string& timeDictPath, const string& cityDictPath): _keywordExtractor(dictPath, hmmPath, idfPath, stopwordPath)
+            WordAssembler(const string& dictPath, const string& hmmPath, const string& idfPath, const string& stopwordPath , const string& timeDictPath, const string& cityDictPath, const string& locationDictPath): _keywordExtractor(dictPath, hmmPath, idfPath, stopwordPath)
             {
                 //_loadSet(locationDictPath, _locationSet);
                 _loadTimeMap(timeDictPath, _timeMap);
                 _loadCityDict(cityDictPath, _cityInfos, _cityNameIndex);
+                _loadLocationDict(locationDictPath, _locationInfos, _locationNameIndex);
             }
             ~WordAssembler()
             {}
@@ -78,6 +90,7 @@ namespace FoxRiver
                 }
 
                 _findCityInfo(words, keyInfo.cityInfo);
+                _findLocationInfo(words, keyInfo.locationInfo);
                 _findTime(words,keyInfo.time);
 
                 res << keyInfo;
@@ -123,7 +136,7 @@ namespace FoxRiver
                 }
                 assert(mp.size());
             }
-        public:
+        private:
             void _loadCityDict(const string& filePath, vector<CityInfo>& cityInfos, CityInfoIndexType& cityNameIndex) const
             {
                 tinyxml2::XMLDocument doc;
@@ -173,25 +186,53 @@ namespace FoxRiver
                 {
                     cityNameIndex[cityInfos[i].name] = &(cityInfos[i]);
                 }
-                LogDebug("load [%u] cityInfos ", _cityInfos.size());
+                LogDebug("load [%u] cityInfos ", cityInfos.size());
             }
-        private:
-            //void _loadSet(const string& filePath, set<string>& st) const
-            //{
-            //    ifstream ifs(filePath.c_str());
-            //    if(!ifs)
-            //    {
-            //        LogFatal("open [%s] failed.", filePath.c_str());
-            //        assert(false);
-            //    }
-            //    st.clear();
-            //    string line;
-            //    while(getline(ifs, line))
-            //    {
-            //        st.insert(line);
-            //    }
-            //    assert(st.size());
-            //}
+            void _loadLocationDict(const string& filePath, vector<LocationInfo>& locInfos, LocationInfoIndexType& locNameIndex) const
+            {
+                tinyxml2::XMLDocument doc;
+                tinyxml2::XMLError xmlError = doc.LoadFile(filePath.c_str());
+                assert(xmlError == tinyxml2::XML_SUCCESS);
+                tinyxml2::XMLElement * element = NULL;
+                tinyxml2::XMLElement * elementTmp = NULL;
+                const char* str = NULL;
+                element = doc.FirstChildElement("LocationDetails");
+                assert(element);
+                element = element->FirstChildElement("LocationDetail");
+                assert(element);
+                LocationInfo locInfo;
+                locInfos.clear();
+                locNameIndex.clear();
+                while(element)
+                {
+                    elementTmp = element->FirstChildElement("Location");
+                    assert(elementTmp);
+                    str = elementTmp->GetText();
+                    assert(str);
+                    locInfo.id = str;
+                    
+                    elementTmp = element->FirstChildElement("LocationName");
+                    assert(elementTmp);
+                    str = elementTmp->GetText();
+                    assert(str);
+                    locInfo.name = str;
+
+                    elementTmp = element->FirstChildElement("LocationCity");
+                    assert(elementTmp);
+                    str = elementTmp->GetText();
+                    assert(str);
+                    locInfo.cityId = str;
+
+                    locInfos.push_back(locInfo);
+                    
+                    element = element->NextSiblingElement("LocationDetail");
+                }
+                for(size_t i = 0; i < locInfos.size(); i ++)
+                {
+                    locNameIndex[locInfos[i].name] = &(locInfos[i]);
+                }
+                LogDebug("load [%u] locInfos ", locInfos.size());
+            }
             bool _findTime(const vector<string>& words, string & timeStr) const
             {
                 for(size_t i = 0; i < words.size(); i ++)
@@ -215,6 +256,22 @@ namespace FoxRiver
                         cityInfo.name = citer->second->name;
                         cityInfo.id = citer->second->id;
                         cityInfo.code = citer->second->code;
+                        return true;
+                    }
+                }
+                return false;
+            }
+            bool _findLocationInfo(const vector<string>& words, LocationInfo & locationInfo) const
+            {
+                LocationInfoIndexType::const_iterator citer;
+                for(size_t i = 0; i < words.size(); i++)
+                {
+                    citer = _locationNameIndex.find(words[i]);
+                    if(_locationNameIndex.end() != citer)
+                    {
+                        locationInfo.name = citer->second->name;
+                        locationInfo.id = citer->second->id;
+                        locationInfo.cityId = citer->second->cityId;
                         return true;
                     }
                 }
