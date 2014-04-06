@@ -10,7 +10,7 @@ const char * const IDF_PATH = "../dict/idf.utf8";
 const char * const STOPWORD_PATH = "../dict/stop_words.utf8";
 const char * const TIME_DICT_PATH = "../dict/time.utf8";
 const char * const CITY_PATH = "../dict/city.xml";
-const char * const LOCATION_PATH = "../dict/city.xml";
+const char * const LOCATION_PATH = "../dict/location.xml";
 
 int main(int argc, char** argv)
 {
