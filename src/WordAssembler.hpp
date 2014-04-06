@@ -19,6 +19,12 @@ namespace FoxRiver
         string id;
         string name;
     };
+
+    inline ostream& operator << (ostream& os, const CityInfo& cityInfo)
+    {
+        return os << string_format("{code: %s, id:%s, name: %s}", cityInfo.code.c_str(), cityInfo.id.c_str(), cityInfo.name.c_str());
+    }
+    
     typedef unordered_map<string, const CityInfo*> CityInfoIndexType;
     struct KeyInfo
     {
@@ -26,7 +32,7 @@ namespace FoxRiver
         CityInfo cityInfo;
     };
 
-    ostream& operator << (ostream& os, const KeyInfo& keyInfo)
+    inline ostream& operator << (ostream& os, const KeyInfo& keyInfo)
     {
         return os << string_format("{\"time\": \"%s\", \"cityName\": \"%s\", \"cityId\": \"%s\", \"cityCode\": \"%s\"}", keyInfo.time.c_str(), keyInfo.cityInfo.name.c_str(), keyInfo.cityInfo.id.c_str(), keyInfo.cityInfo.code.c_str());
     }
@@ -71,10 +77,8 @@ namespace FoxRiver
                     return false;
                 }
 
-                print(__LINE__);
                 _findCityInfo(words, keyInfo.cityInfo);
                 _findTime(words,keyInfo.time);
-                print(__LINE__);
 
                 res << keyInfo;
                 return true;
@@ -159,12 +163,15 @@ namespace FoxRiver
                     assert(elementTmp);
                     str = elementTmp->GetText();
                     assert(str);
-                    print(str);
                     cityInfo.name = str;
 
                     cityInfos.push_back(cityInfo);
-                    cityNameIndex[cityInfo.name] = &cityInfos.back();
+                    
                     element = element->NextSiblingElement("CityDetail");
+                }
+                for(size_t i = 0; i < cityInfos.size(); i ++)
+                {
+                    cityNameIndex[cityInfos[i].name] = &(cityInfos[i]);
                 }
                 LogDebug("load [%u] cityInfos ", _cityInfos.size());
             }
@@ -202,25 +209,12 @@ namespace FoxRiver
                 for(size_t i = 0; i < words.size(); i++)
                 {
                     citer = _cityNameIndex.find(words[i]);
-                    print(__LINE__);
-                    print(words[i]);
                     if(_cityNameIndex.end() != citer)
                     {
-                    print(__LINE__);
-                    print(words[i]);
-                    assert(citer->second);
-                    getchar();
-                    print(citer->second->name);
-                    getchar();
-                    print(citer->second->id);
-                    getchar();
-                    print(citer->second->code);
-                    getchar();
 
                         cityInfo.name = citer->second->name;
                         cityInfo.id = citer->second->id;
                         cityInfo.code = citer->second->code;
-                    print(__LINE__);
                         return true;
                     }
                 }

@@ -20,16 +20,11 @@ TEST(TWordAssembler, test1)
     KeyInfo keyInfo;
     wordAssembler.convertTime("明天", keyInfo.time);
     keyInfo.cityInfo.name = "上海";
-    print(res);
-    exit(0);
+    keyInfo.cityInfo.id = "2";
+    keyInfo.cityInfo.code = "SHA";
     string s1, s2;
     s1 << keyInfo;
     s2 << res;
     ASSERT_EQ(s1, s2);
 }
 
-TEST(TWordAssembler, test2)
-{
-    WordAssembler wordAssembler(DICT_PATH, HMM_PATH, IDF_PATH, STOPWORD_PATH, TIME_DICT_PATH, LOCATION_PATH);
-    //wordAssembler._loadCityDict("../dict/city.xml");
-}
