@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.org/aszxqw/foxriver.png?branch=master)](https://travis-ci.org/aszxqw/foxriver)
+- - -
+
 # Foxriver
 
 ## 简介
