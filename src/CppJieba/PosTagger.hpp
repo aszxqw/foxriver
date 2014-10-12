@@ -2,39 +2,45 @@
 #define CPPJIEBA_POS_TAGGING_H
 
 #include "MixSegment.hpp"
-#include "Limonp/str_functs.hpp"
-#include "Trie.hpp"
+#include "Limonp/StringUtil.hpp"
+#include "DictTrie.hpp"
 
 namespace CppJieba
 {
     using namespace Limonp;
 
-    class PosTagger: public InitOnOff
+    class PosTagger
     {
         private:
             MixSegment _segment;
-            Trie _trie;
+            const DictTrie * _dictTrie;
 
         public:
-            PosTagger(){_setInitFlag(false);};
-            explicit PosTagger(const string& dictPath, const string& hmmFilePath, const string& charStatus, const string& startProb, const string& emitProb, const string& endProb, const string& transProb)
+            PosTagger()
+            {}
+            PosTagger(
+                const string& dictPath, 
+                const string& hmmFilePath,
+                const string& userDictPath = ""
+            )
             {
-                _setInitFlag(init(dictPath, hmmFilePath, charStatus, startProb, emitProb, endProb, transProb));
+                init(dictPath, hmmFilePath, userDictPath);
             };
             ~PosTagger(){};
         public:
-            bool init(const string& dictPath, const string& hmmFilePath, const string& charStatus, const string& startProb, const string& emitProb, const string& endProb, const string& transProb)
+            void init(
+                const string& dictPath, 
+                const string& hmmFilePath,
+                const string& userDictPath = ""
+            )
             {
-                
-                assert(!_getInitFlag());
-                _trie.init(dictPath);
-                assert(_trie);
-                return _setInitFlag(_segment.init(dictPath, hmmFilePath));
+                LIMONP_CHECK(_segment.init(dictPath, hmmFilePath, userDictPath));
+                _dictTrie = _segment.getDictTrie();
+                LIMONP_CHECK(_dictTrie);
             };
 
-            bool tag(const string& src, vector<pair<string, string> >& res)
+            bool tag(const string& src, vector<pair<string, string> >& res) const
             {
-                assert(_getInitFlag());
                 vector<string> cutRes;
                 if (!_segment.cut(src, cutRes))
                 {
@@ -42,7 +48,7 @@ namespace CppJieba
                     return false;
                 }
 
-                const TrieNodeInfo *tmp = NULL;
+                const DictUnit *tmp = NULL;
                 Unicode unico;
                 for (vector<string>::iterator itr = cutRes.begin(); itr != cutRes.end(); ++itr)
                 {
@@ -51,7 +57,7 @@ namespace CppJieba
                         LogError("decode failed.");
                         return false;
                     }
-                    tmp = _trie.find(unico.begin(), unico.end());
+                    tmp = _dictTrie->find(unico.begin(), unico.end());
                     res.push_back(make_pair(*itr, tmp == NULL ? "x" : tmp->tag));
                 }
                 tmp = NULL;

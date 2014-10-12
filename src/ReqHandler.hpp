@@ -1,7 +1,7 @@
 #ifndef FOX_RIVER_REQ_HANDLER_H
 #define FOX_RIVER_REQ_HANDLER_H
 
-#include "CppJieba/Husky/EpollServer.hpp"
+#include "CppJieba/Husky/ThreadPoolServer.hpp"
 #include "WordAssembler.hpp"
 
 namespace FoxRiver
@@ -22,6 +22,12 @@ namespace FoxRiver
                 URLDecode(tmp, sentence);
                 return _wordAssembler.run(sentence, res);
             }
+            bool do_POST(const HttpReqInfo& httpReq, string& res) const 
+            {
+                //TODO
+                return false;
+            }
+
     };
 }
 

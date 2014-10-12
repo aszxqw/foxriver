@@ -9,8 +9,8 @@
 #include <map>
 #include <fstream>
 #include <iostream>
-#include "logger.hpp"
-#include "str_functs.hpp"
+#include <assert.h>
+#include "StringUtil.hpp"
 
 namespace Limonp
 {
@@ -18,27 +18,23 @@ namespace Limonp
     class Config
     {
         public:
-            Config(const char * const filePath)
+            explicit Config(const string& filePath)
             {
-                _loadFile(filePath);
+                loadFile_(filePath);
             }
         public:
             operator bool ()
             {
-                return !_map.empty();
+                return !map_.empty();
             }
         private:
-            bool _loadFile(const char * const filePath)
+            void loadFile_(const string& filePath)
             {
-                ifstream ifs(filePath);
-                if(!ifs)
-                {
-                    LogFatal("open file[%s] failed.", filePath);
-                    return false;
-                }
+                ifstream ifs(filePath.c_str());
+                assert(ifs);
                 string line;
                 vector<string> vecBuf;
-                uint lineno = 0;
+                size_t lineno = 0;
                 while(getline(ifs, line))
                 {
                     lineno ++;
@@ -50,43 +46,72 @@ namespace Limonp
                     vecBuf.clear();
                     if(!split(line, vecBuf, "=") || 2 != vecBuf.size())
                     {
-                        LogFatal("line[%d:%s] is illegal.", lineno, line.c_str());
-                        return false;
+                        fprintf(stderr, "line[%s] illegal.\n", line.c_str());
+                        assert(false);
+                        continue;
                     }
                     string& key = vecBuf[0];
                     string& value = vecBuf[1];
                     trim(key);
                     trim(value);
-                    if(_map.end() != _map.find(key))
+                    if(!map_.insert(make_pair(key, value)).second)
                     {
-                        LogFatal("key[%s] already exists.", key.c_str());
-                        return false;
+                        fprintf(stderr, "key[%s] already exits.\n", key.c_str());
+                        assert(false);
+                        continue;
                     }
-                    _map[key] = value;
                 }
                 ifs.close();
-                return true;
             }
         public:
             bool get(const string& key, string& value) const
             {
-                map<string, string>::const_iterator it = _map.find(key);
-                if(_map.end() != it)
+                map<string, string>::const_iterator it = map_.find(key);
+                if(map_.end() != it)
                 {
                     value = it->second;
                     return true;
                 }
                 return false;
             }
+            bool get(const string& key, int & value) const
+            {
+                string str;
+                if(!get(key, str)) {
+                    return false;
+                }
+                value = atoi(str.c_str());
+                return true;
+            }
+            const char* operator [] (const char* key) const
+            {
+                if(NULL == key)
+                {
+                    return NULL;
+                }
+                map<string, string>::const_iterator it = map_.find(key);
+                if(map_.end() != it)
+                {
+                    return it->second.c_str();
+                }
+                return NULL;
+            }
+        public:
+            string getConfigInfo() const
+            {
+                string res;
+                res << *this;
+                return res;
+            }
         private:
-            map<string, string> _map;
+            map<string, string> map_;
         private:
             friend ostream& operator << (ostream& os, const Config& config);
     };
     
     inline ostream& operator << (ostream& os, const Config& config)
     {
-        return os << config._map;
+        return os << config.map_;
     }
 }
 

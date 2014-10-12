@@ -5,12 +5,12 @@
 #include <fstream>
 #include <memory.h>
 #include <cassert>
-#include "Limonp/str_functs.hpp"
-#include "Limonp/logger.hpp"
+#include "Limonp/StringUtil.hpp"
+#include "Limonp/Logger.hpp"
 #include "TransCode.hpp"
 #include "ISegment.hpp"
 #include "SegmentBase.hpp"
-#include "Trie.hpp"
+#include "DictTrie.hpp"
 
 namespace CppJieba
 {
@@ -35,20 +35,15 @@ namespace CppJieba
             vector<EmitProbMap* > _emitProbVec;
 
         public:
-            HMMSegment(){_setInitFlag(false);}
+            HMMSegment(){}
             explicit HMMSegment(const string& filePath)
             {
-                _setInitFlag(init(filePath));
+                LIMONP_CHECK(init(filePath));
             }
             virtual ~HMMSegment(){}
         public:
             bool init(const string& filePath)
             {
-                if(_getInitFlag())
-                {
-                    LogError("inited already.");
-                    return false;
-                }
                 memset(_startProb, 0, sizeof(_startProb));
                 memset(_transProb, 0, sizeof(_transProb));
                 _statMap[0] = 'B';
@@ -59,23 +54,47 @@ namespace CppJieba
                 _emitProbVec.push_back(&_emitProbE);
                 _emitProbVec.push_back(&_emitProbM);
                 _emitProbVec.push_back(&_emitProbS);
-                if(!_setInitFlag(_loadModel(filePath.c_str())))
-                {
-                    LogError("_loadModel(%s) failed.", filePath.c_str());
-                    return false;
-                }
+                LIMONP_CHECK(_loadModel(filePath.c_str()));
                 LogInfo("HMMSegment init(%s) ok.", filePath.c_str());
                 return true;
             }
         public:
             using SegmentBase::cut;
+        public:
             bool cut(Unicode::const_iterator begin, Unicode::const_iterator end, vector<Unicode>& res)const 
             {
-                if(!_getInitFlag())
+                Unicode::const_iterator left = begin;
+                Unicode::const_iterator right = begin;
+                while(right != end)
                 {
-                    LogError("not inited.");
+                    if(*right < 0x80) 
+                    {
+                        if(left != right && !_cut(left, right, res))
+                        {
+                            return false;
+                        }
+                        left = right;
+                        while(*right < 0x80 && right != end)
+                        {
+                            right++;
+                        }
+                        res.push_back(Unicode(left, right));
+                        left = right;
+                    }
+                    else
+                    {
+                        right++;
+                    }
+                }
+                if(left != right && !_cut(left, right, res))
+                {
                     return false;
                 }
+                return true;
+            }
+        private:
+            bool _cut(Unicode::const_iterator begin, Unicode::const_iterator end, vector<Unicode>& res) const 
+            {
                 vector<size_t> status; 
                 if(!_viterbi(begin, end, status))
                 {
@@ -85,7 +104,7 @@ namespace CppJieba
 
                 Unicode::const_iterator left = begin;
                 Unicode::const_iterator right;
-                for(size_t i =0; i< status.size(); i++)
+                for(size_t i = 0; i < status.size(); i++)
                 {
                     if(status[i] % 2) //if(E == status[i] || S == status[i])
                     {
@@ -99,22 +118,23 @@ namespace CppJieba
         public:
             virtual bool cut(Unicode::const_iterator begin, Unicode::const_iterator end, vector<string>& res)const
             {
-                assert(_getInitFlag());
                 if(begin == end)
                 {
                     return false;
                 }
                 vector<Unicode> words;
+                words.reserve(end - begin);
                 if(!cut(begin, end, words))
                 {
                     return false;
                 }
-                string tmp;
+                size_t offset = res.size();
+                res.resize(res.size() + words.size());
                 for(size_t i = 0; i < words.size(); i++)
                 {
-                    if(TransCode::encode(words[i], tmp))
+                    if(!TransCode::encode(words[i], res[offset + i]))
                     {
-                        res.push_back(tmp);
+                        LogError("encode failed.");
                     }
                 }
                 return true;
@@ -130,27 +150,13 @@ namespace CppJieba
 
                 size_t Y = STATUS_SUM;
                 size_t X = end - begin;
+
                 size_t XYSize = X * Y;
-                int * path;
-                double * weight;
                 size_t now, old, stat;
                 double tmp, endE, endS;
 
-                try
-                {
-                    path = new int [XYSize];
-                    weight = new double [XYSize];
-                }
-                catch(const std::bad_alloc&)
-                {
-                    LogError("bad_alloc");
-                    return false;
-                }
-                if(NULL == path || NULL == weight)
-                {
-                    LogError("bad_alloc");
-                    return false;
-                }
+                vector<int> path(XYSize);
+                vector<double> weight(XYSize);
 
                 //start
                 for(size_t y = 0; y < Y; y++)
@@ -158,8 +164,10 @@ namespace CppJieba
                     weight[0 + y * X] = _startProb[y] + _getEmitProb(_emitProbVec[y], *begin, MIN_DOUBLE);
                     path[0 + y * X] = -1;
                 }
-                //process
-                //for(; begin != end; begin++)
+
+
+                double emitProb;
+
                 for(size_t x = 1; x < X; x++)
                 {
                     for(size_t y = 0; y < Y; y++)
@@ -167,10 +175,11 @@ namespace CppJieba
                         now = x + y*X;
                         weight[now] = MIN_DOUBLE;
                         path[now] = E; // warning
+                        emitProb = _getEmitProb(_emitProbVec[y], *(begin+x), MIN_DOUBLE);
                         for(size_t preY = 0; preY < Y; preY++)
                         {
                             old = x - 1 + preY * X;
-                            tmp = weight[old] + _transProb[preY][y] + _getEmitProb(_emitProbVec[y], *(begin+x), MIN_DOUBLE);
+                            tmp = weight[old] + _transProb[preY][y] + emitProb;
                             if(tmp > weight[now])
                             {
                                 weight[now] = tmp;
@@ -183,7 +192,7 @@ namespace CppJieba
                 endE = weight[X-1+E*X];
                 endS = weight[X-1+S*X];
                 stat = 0;
-                if(endE > endS)
+                if(endE >= endS)
                 {
                     stat = E;
                 }
@@ -192,15 +201,13 @@ namespace CppJieba
                     stat = S;
                 }
 
-                status.assign(X, 0);
+                status.resize(X);
                 for(int x = X -1 ; x >= 0; x--)
                 {
                     status[x] = stat;
                     stat = path[x + stat*X];
                 }
 
-                delete [] path;
-                delete [] weight;
                 return true;
             }
             bool _loadModel(const char* const filePath)
@@ -299,7 +306,7 @@ namespace CppJieba
                     return false;
                 }
                 vector<string> tmp, tmp2;
-                uint16_t unico = 0;
+                Unicode unicode;
                 split(line, tmp, ",");
                 for(size_t i = 0; i < tmp.size(); i++)
                 {
@@ -309,23 +316,13 @@ namespace CppJieba
                         LogError("_emitProb illegal.");
                         return false;
                     }
-                    if(!_decodeOne(tmp2[0], unico))
+                    if(!TransCode::decode(tmp2[0], unicode) || unicode.size() != 1)
                     {
                         LogError("TransCode failed.");
                         return false;
                     }
-                    mp[unico] = atof(tmp2[1].c_str());
+                    mp[unicode[0]] = atof(tmp2[1].c_str());
                 }
-                return true;
-            }
-            bool _decodeOne(const string& str, uint16_t& res)
-            {
-                Unicode ui16;
-                if(!TransCode::decode(str, ui16) || ui16.size() != 1)
-                {
-                    return false;
-                }
-                res = ui16[0];
                 return true;
             }
             double _getEmitProb(const EmitProbMap* ptMp, uint16_t key, double defVal)const 

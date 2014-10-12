@@ -3,9 +3,8 @@
 
 #include <iostream>
 #include <string>
-#include <unordered_map>
-#include "Limonp/logger.hpp"
-#include "Limonp/str_functs.hpp"
+#include "Limonp/Logger.hpp"
+#include "Limonp/StringUtil.hpp"
 
 namespace Husky
 {
@@ -38,10 +37,6 @@ namespace Husky
             {      
                 buf[0] = sIn[ix];
             }
-            //else if ( isspace( (BYTE)sIn[ix] ) ) //貌似把空格编码成%20或者+都可以
-            //{
-            //    buf[0] = '+';
-            //}
             else
             {
                 buf[0] = '%';
@@ -78,22 +73,30 @@ namespace Husky
     class HttpReqInfo
     {
         public:
-            HttpReqInfo(const string& headerStr)
+            HttpReqInfo()
             {
+                _isHeaderFinished = false;
+                _isBodyFinished = false;
+                _contentLength = 0;
+            }
+        public:
+            bool parseHeader(const char* buffer, size_t len) 
+            {
+                string headerStr(buffer, len);
                 size_t lpos = 0, rpos = 0;
                 vector<string> buf;
                 rpos = headerStr.find("\n", lpos);
                 if(string::npos == rpos)
                 {
-                    LogError("headerStr illegal.");
-                    return;
+                    LogError("headerStr[%s] illegal.", headerStr.c_str());
+                    return false;
                 }
                 string firstline(headerStr, lpos, rpos - lpos);
                 trim(firstline);
                 if(!split(firstline, buf, " ") || 3 != buf.size())
                 {
-                    LogError("parse header first line failed.");
-                    return;
+                    LogError("parse header firstline[%s] failed.", firstline.c_str());
+                    return false;
                 }
                 _headerMap[KEY_METHOD] = trim(buf[0]); 
                 _headerMap[KEY_PATH] = trim(buf[1]); 
@@ -108,8 +111,8 @@ namespace Husky
                 lpos = rpos + 1;
                 if(lpos >= headerStr.size())
                 {
-                    LogError("headerStr illegal");
-                    return;
+                    LogError("headerStr[%s] illegal.", headerStr.c_str());
+                    return false;
                 }
                 //message header begin
                 while(lpos < headerStr.size() && string::npos != (rpos = headerStr.find('\n', lpos)) && rpos > lpos)
@@ -126,22 +129,57 @@ namespace Husky
                     trim(v);
                     if(k.empty()||v.empty())
                     {
-                        LogError("headerStr illegal.");
-                        return;
+                        LogError("headerStr[%s] illegal.", headerStr.c_str());
+                        return false;
                     }
                     upper(k);
                     _headerMap[k] = v;
                     lpos = rpos + 1;
                 }
+                rpos ++;
+                _isHeaderFinished = true;
+                string content_length;
+                if(!find("CONTENT-LENGTH", content_length)) 
+                {
+                    _isBodyFinished = true;
+                    return true;
+                }
+                _contentLength = atoi(content_length.c_str());
+                if(rpos < headerStr.size()) 
+                {
+                    appendBody(headerStr.c_str() + rpos, headerStr.size() - rpos);
+                }
+                return true;
                 //message header end
-
-                //body begin
-
+            }
+            void appendBody(const char* buffer, size_t len) 
+            {
+                if(_isBodyFinished)
+                {
+                    return;
+                }
+                _body.append(buffer, len);
+                if(_body.size() >= _contentLength) 
+                {
+                    _isBodyFinished = true;
+                }
+                else
+                {
+                    _isBodyFinished = false;
+                }
+            }
+            bool isHeaderFinished() const 
+            {
+                return _isHeaderFinished;
+            }
+            bool isBodyFinished() const
+            {
+                return _isBodyFinished;
             }
         public:
-            string& operator[] (const string& key)
+            const string& set(const string& key, const string& value)
             {
-                return _headerMap[key];
+                return _headerMap[key] = value;
             }
             bool find(const string& key, string& res)const
             {
@@ -151,15 +189,47 @@ namespace Husky
             {
                 return _find(_methodGetMap, argKey, res);
             }
-            bool POST(const string& argKey, string& res)const
+            //const string& getMethod() const
+            //{
+            //    return _headerMap.find(KEY_METHOD)->second;
+            //}
+            bool isGET() const
             {
-                return _find(_methodPostMap, argKey, res);
+                string str;
+                if(!_find(_headerMap, KEY_METHOD, str))
+                {
+                    return false;
+                }
+                return str == "GET";
+            }
+            bool isPOST() const
+            {
+                string str;
+                if(!_find(_headerMap, KEY_METHOD, str))
+                {
+                    return false;
+                }
+                return str == "POST";
+            }
+            const unordered_map<string, string> & getMethodGetMap() const
+            {
+                return _methodGetMap;
+            }
+            const unordered_map<string, string> & getHeaders() const
+            {
+                return _headerMap;
+            }
+            const string& getBody() const
+            {
+                return _body;
             }
         private:
-            std::unordered_map<string, string> _headerMap;
-            std::unordered_map<string, string> _methodGetMap;
-            std::unordered_map<string, string> _methodPostMap;
-            //public:
+            bool _isHeaderFinished;
+            bool _isBodyFinished;
+            size_t _contentLength;
+            unordered_map<string, string> _headerMap;
+            unordered_map<string, string> _methodGetMap;
+            string _body;
             friend ostream& operator<<(ostream& os, const HttpReqInfo& obj);
         private:
             bool _find(const std::unordered_map<string, string>& mp, const string& key, string& res)const
@@ -180,14 +250,14 @@ namespace Husky
                     return false;
                 }
 
-                uint pos = url.find('?');
+                size_t pos = url.find('?');
                 if(string::npos == pos)
                 {
                     return false;
                 }
-                uint kleft = 0, kright = 0;
-                uint vleft = 0, vright = 0;
-                for(uint i = pos + 1; i < url.size();)
+                size_t kleft = 0, kright = 0;
+                size_t vleft = 0, vright = 0;
+                for(size_t i = pos + 1; i < url.size();)
                 {
                     kleft = i;
                     while(i < url.size() && url[i] != '=')
@@ -216,7 +286,7 @@ namespace Husky
 
     inline std::ostream& operator << (std::ostream& os, const Husky::HttpReqInfo& obj)
     {
-        return os << obj._headerMap << obj._methodGetMap << obj._methodPostMap;
+        return os << obj._headerMap << obj._methodGetMap/* << obj._methodPostMap*/ << obj._body;
     }
 
 }

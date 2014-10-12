@@ -1,15 +1,30 @@
-#ifndef LIMONP_STD_OUTBOUND_H
-#define LIMONP_STD_OUTBOUND_H
+#ifndef LIMONP_STD_EXTEMSION_HPP
+#define LIMONP_STD_EXTEMSION_HPP
 
-#include "map_functs.hpp"
 #include <map>
+
+#if(__cplusplus == 201103L)
+#include <unordered_map>
+#include <unordered_set>
+#else
+#include <tr1/unordered_map>
+#include <tr1/unordered_set>
+namespace std
+{
+    using std::tr1::unordered_map;
+    using std::tr1::unordered_set;
+}
+
+#endif
+
 #include <set>
 #include <vector>
 #include <fstream>
+#include <sstream>
+
 
 namespace std
 {
-    using namespace std;
     template<typename T>
         ostream& operator << (ostream& os, const vector<T>& vec)
         {
@@ -18,7 +33,7 @@ namespace std
                 return os << "[]";
             }
             os<<"[\""<<vec[0];
-            for(uint i = 1; i < vec.size(); i++)
+            for(size_t i = 1; i < vec.size(); i++)
             {
                 os<<"\", \""<<vec[i];
             }
@@ -110,6 +125,14 @@ namespace std
         basic_string<T> & operator << (basic_string<T> & s, ifstream & ifs)
         {
             return s.assign((istreambuf_iterator<T>(ifs)), istreambuf_iterator<T>());
+        }
+
+    template<class T>
+        ofstream & operator << (ofstream & ofs, const basic_string<T>& s)
+        {
+            ostreambuf_iterator<T> itr (ofs);
+            copy(s.begin(), s.end(), itr);
+            return ofs;
         }
 }
 
