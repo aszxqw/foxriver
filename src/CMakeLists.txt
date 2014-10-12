@@ -5,4 +5,4 @@ INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src ${PROJECT_SO
 ADD_DEFINITIONS(-std=c++0x -O3 -Wall -g)
 
 ADD_EXECUTABLE(foxriver main.cpp)
-TARGET_LINK_LIBRARIES(foxriver tinyxml2)
+TARGET_LINK_LIBRARIES(foxriver tinyxml2 pthread)
