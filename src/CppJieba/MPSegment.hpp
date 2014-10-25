@@ -93,7 +93,8 @@ namespace CppJieba
                     segmentChars[i].uniCh = *(begin + i);
                     segmentChars[i].dag.clear();
                     _dictTrie.find(begin + i, end, segmentChars[i].dag, i);
-                    segmentChars[i].dag.insert(pair<DagType::key_type, DagType::mapped_type>(i, NULL));
+                    //segmentChars[i].dag.insert(pair<DagType::key_type, DagType::mapped_type>(i, NULL)); sometimes it occurs fantastic error.
+                    segmentChars[i].dag.insert(pair<DagType::key_type, DagType::mapped_type>(i, (DictUnit*)NULL));
                 }
 
                 _calcDP(segmentChars);
